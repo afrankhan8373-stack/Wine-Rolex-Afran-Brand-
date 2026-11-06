@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CR7 AFRAN - WhatsApp Automation Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), url('bg.jpg') no-repeat center center fixed;
+            background-size: cover;
+            margin: 0;
+            padding: 20px;
+            color: #fff;
+        }
+        .container {
+            max-width: 650px;
+            margin: 0 auto;
+            background: rgba(0, 0, 0, 0.88);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 0 20px #25d366;
+            border: 2px solid #25d366;
+        }
+        h2 {
+            color: #25d366;
+            text-align: center;
+            text-shadow: 0 0 10px #25d366;
+        }
+        .card {
+            background: rgba(10, 30, 15, 0.9);
+            border: 1px solid #25d366;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            box-shadow: inset 0 0 10px rgba(37, 211, 102, 0.2);
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #25d366;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: #111;
+            border: 1px solid #25d366;
+            color: #fff;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        input[type="file"] {
+            background: #222;
+            cursor: pointer;
+        }
+        button {
+            background: #25d366;
+            color: black;
+            border: none;
+            padding: 12px 15px;
+            width: 100%;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            box-shadow: 0 0 10px #25d366;
+            margin-top: 5px;
+        }
+        button:hover {
+            background: #128c7e;
+            color: white;
+        }
+        #pairingCodeBox {
+            font-size: 26px;
+            font-weight: bold;
+            text-align: center;
+            color: #ffcc00;
+            background: #222;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            display: none;
+            border: 1px dashed #ffcc00;
+        }
+        .status {
+            font-weight: bold;
+            margin-top: 10px;
+            text-align: center;
+            color: #00ffcc;
+        }
+        .logs-box {
+            background: #000;
+            border: 1px solid #00ffcc;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 13px;
+            color: #00ffcc;
+            max-height: 150px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>âš¡ CR7 AFRAN - WHATSAPP PANEL âš¡</h2>
+
+    <!-- LOGIN / PAIRING SECTION -->
+    <div class="card">
+        <h3>1. Connect WhatsApp</h3>
+        <label>Phone Number (with Country Code):</label>
+        <input type="text" id="phoneInput" placeholder="919876543210">
+        <button onclick="startLogin()">Generate Pairing Code</button>
+        
+        <div id="pairingCodeBox"></div>
+        <div id="loginStatus" class="status"></div>
+    </div>
+
+    <!-- AUTOMATION SECTION -->
+    <div class="card">
+        <h3>2. Non-Stop np.txt Automation</h3>
+        <label>Session ID (Get after connecting):</label>
+        <input type="text" id="sessionIdInput" placeholder="session_123456789">
+
+        <!-- GROUP SELECTOR BUTTON & DROPDOWN -->
+        <button onclick="loadGroups()" style="background: #ffcc00; color: black; margin-bottom: 10px;">ðŸ“‹ Load WhatsApp Groups</button>
+        
+        <label>Select Group (Optional):</label>
+        <select id="groupSelect" onchange="selectGroupTarget()">
+            <option value="">-- Or Select Connected Group --</option>
+        </select>
+
+        <label>Target (Phone Number or Group ID):</label>
+        <input type="text" id="targetInput" placeholder="919594544982 or group_id@g.us">
+
+        <label>Message Prefix (Optional):</label>
+        <input type="text" id="prefixInput" placeholder="ðŸ”¥ CR7 ðŸ”¥">
+
+        <label>Select np.txt File:</label>
+        <input type="file" id="npFileInput" accept=".txt">
+
+        <label>Speed / Delay (in seconds):</label>
+        <input type="number" id="speedInput" value="3" min="1">
+
+        <button onclick="startAutomation()" style="background: #25d366;">Start Non-Stop Automation</button>
+        <button onclick="stopAutomation()" style="background: #d9534f; margin-top: 10px; color: white;">Stop Automation</button>
+        
+        <div id="autoStatus" class="status"></div>
+
+        <!-- LIVE LOGS TRACKER -->
+        <label style="margin-top: 15px;">Live Message Logs:</label>
+        <div id="liveLogs" class="logs-box">Waiting for automation to start...</div>
+    </div>
+</div>
+
+<script>
+    let codeInterval = null;
+    let logInterval = null;
+
+    async function startLogin() {
+        const phone = document.getElementById('phoneInput').value.trim();
+        const statusDiv = document.getElementById('loginStatus');
+        const codeBox = document.getElementById('pairingCodeBox');
+
+        if (!phone) {
+            alert('Please enter a phone number');
+            return;
+        }
+
+        statusDiv.innerText = 'Requesting session and pairing code...';
+        codeBox.style.display = 'none';
+
+        try {
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                const sessionId = data.sessionId;
+                document.getElementById('sessionIdInput').value = sessionId;
+                statusDiv.innerText = 'Waiting for pairing code...';
+                codeInterval = setInterval(() => fetchPairingCode(sessionId), 3000);
+            } else {
+                statusDiv.innerText = 'Error: ' + data.message;
+            }
+        } catch (e) {
+            statusDiv.innerText = 'Network error: ' + e.message;
+        }
+    }
+
+    async function fetchPairingCode(sessionId) {
+        try {
+            const res = await fetch(`/api/pairing-code/${sessionId}`);
+            const data = await res.json();
+
+            if (data.success && data.status === 'ready') {
+                clearInterval(codeInterval);
+                const codeBox = document.getElementById('pairingCodeBox');
+                codeBox.innerText = data.pairingCode;
+                codeBox.style.display = 'block';
+                document.getElementById('loginStatus').innerText = 'Enter this code in WhatsApp Linked Devices!';
+            } else if (data.status === 'error') {
+                clearInterval(codeInterval);
+                document.getElementById('loginStatus').innerText = 'Error: ' + data.message;
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function loadGroups() {
+        const sessionId = document.getElementById('sessionIdInput').value.trim();
+        if (!sessionId) {
+            alert('Please enter or generate Session ID first!');
+            return;
+        }
+
+        const groupSelect = document.getElementById('groupSelect');
+        groupSelect.innerHTML = '<option value="">Fetching groups from WhatsApp...</option>';
+
+        try {
+            const res = await fetch(`/api/groups/${sessionId}`);
+            const data = await res.json();
+
+            if (data.success && data.groups.length > 0) {
+                groupSelect.innerHTML = '<option value="">-- Choose Group From List --</option>';
+                data.groups.forEach(g => {
+                    const opt = document.createElement('option');
+                    opt.value = g.id;
+                    opt.textContent = `${g.subject} (${g.id})`;
+                    groupSelect.appendChild(opt);
+                });
+                alert(`Successfully loaded ${data.groups.length} groups!`);
+            } else {
+                groupSelect.innerHTML = '<option value="">No groups found or session not connected</option>';
+                alert('Could not fetch groups. Make sure WhatsApp is connected properly!');
+            }
+        } catch (e) {
+            alert('Error fetching groups: ' + e.message);
+        }
+    }
+
+    function selectGroupTarget() {
+        const groupSelect = document.getElementById('groupSelect');
+        const targetInput = document.getElementById('targetInput');
+        if (groupSelect.value) {
+            targetInput.value = groupSelect.value;
+        }
+    }
+
+    function startAutomation() {
+        const sessionId = document.getElementById('sessionIdInput').value.trim();
+        const target = document.getElementById('targetInput').value.trim();
+        const prefix = document.getElementById('prefixInput').value;
+        const speed = document.getElementById('speedInput').value;
+        const fileInput = document.getElementById('npFileInput').files[0];
+        const statusDiv = document.getElementById('autoStatus');
+
+        if (!sessionId || !target || !fileInput) {
+            alert('Please fill Session ID, Target (or select group), and select your np.txt file!');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            const textContent = e.target.result;
+            const messages = textContent.split('\n').map(s => s.trim()).filter(Boolean);
+
+            if (messages.length === 0) {
+                alert('The selected file is empty!');
+                return;
+            }
+
+            statusDiv.innerText = `Loaded ${messages.length} messages. Starting non-stop loop...`;
+
+            try {
+                const res = await fetch('/api/start-automation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionId, target, prefix, messages, speed })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    statusDiv.innerText = data.message;
+                    if (logInterval) clearInterval(logInterval);
+                    logInterval = setInterval(() => fetchLiveLogs(sessionId), 2000);
+                } else {
+                    statusDiv.innerText = 'Error: ' + data.message;
+                }
+            } catch (e) {
+                statusDiv.innerText = 'Error: ' + e.message;
+            }
+        };
+        reader.readAsText(fileInput);
+    }
+
+    async function stopAutomation() {
+        const sessionId = document.getElementById('sessionIdInput').value.trim();
+        const statusDiv = document.getElementById('autoStatus');
+
+        if (!sessionId) {
+            alert('Please enter Session ID!');
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/stop-automation', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionId })
+            });
+            const data = await res.json();
+            statusDiv.innerText = data.message;
+            if (logInterval) clearInterval(logInterval);
+        } catch (e) {
+            statusDiv.innerText = 'Error: ' + e.message;
+        }
+    }
+
+    async function fetchLiveLogs(sessionId) {
+        try {
+            const res = await fetch(`/api/logs/${sessionId}`);
+            const data = await res.json();
+            const logsBox = document.getElementById('liveLogs');
+
+            if (data.success && data.logs.length > 0) {
+                logsBox.innerHTML = data.logs.map(l => `[${l.sentAt}] Target: ${l.target} -> Sent: ${l.message}`).join('<br>');
+            } else {
+                logsBox.innerHTML = 'No messages sent yet or waiting...';
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+</script>
+
+</body>
+</html>
